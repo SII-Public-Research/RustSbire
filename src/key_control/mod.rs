@@ -31,3 +31,9 @@ impl KeyboardControl {
         }
     }
 }
+
+impl Default for KeyboardControl {
+    fn default() -> Self {
+        Self::new()
+    }
+}

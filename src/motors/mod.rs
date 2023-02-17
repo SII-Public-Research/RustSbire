@@ -1,7 +1,5 @@
 use std::sync::mpsc::Receiver;
 
-use super::*;
-
 pub struct Motors {
     _left: u32,
     _right: u32,
@@ -23,8 +21,15 @@ impl Motors {
             // thread::sleep(Duration::from_millis(1000));
 
             let (x, y, theta) = rx.recv().unwrap();
-            let val = String::from("coucou");
+            let _val = String::from("coucou");
             println!(" Received Vx = {}, Vy = {}, Vtheta = {}", x, y, theta);
         }
+    }
+}
+
+
+impl Default for Motors {
+    fn default() -> Self {
+        Self::new()
     }
 }

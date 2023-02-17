@@ -1,12 +1,13 @@
 use std::sync::mpsc::Receiver;
+use super::*;
 
 pub struct Motors {
     _left: u32,
     _right: u32,
 }
 
-impl Motors {
-    pub fn new() -> Self {
+impl Component<Receiver<(i32, i32, i32)>> for Motors {
+    fn init() -> Self {
         print!("Motors are initialized !");
         Motors {
             _left: 0,
@@ -14,7 +15,7 @@ impl Motors {
         }
     }
 
-    pub fn main(rx: Receiver<(i32, i32, i32)>) {
+    fn main_thread(rx: Receiver<(i32, i32, i32)>) {
         println!("We are executing code inside the main function of the Motors");
         // println!("Starting Motors thread");
         loop {
@@ -30,6 +31,6 @@ impl Motors {
 
 impl Default for Motors {
     fn default() -> Self {
-        Self::new()
+        Self::init()
     }
 }

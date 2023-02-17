@@ -30,7 +30,7 @@
 //use std::future::join;
 use std::sync::mpsc;
 
-use rust_sbire::{key_control::KeyboardControl, motors::Motors};
+use rust_sbire::{key_control::KeyboardControl, motors::Motors, Component};
 
 use std::thread;
 
@@ -50,14 +50,16 @@ fn main() {
     // let m_motors = Motors::new();
     // let m_keyboard = KeyboardControl::new();
 
-    let _my_components = (Motors::new(), 
-                                                            KeyboardControl::new());
+    let _my_components = (
+        Motors::default(), 
+        KeyboardControl::default(),
+    );
 
     let motor_task = thread::spawn(move || {
-        Motors::main(cmd_vel_rx);
+        Motors::main_thread(cmd_vel_rx);
     });
     let keyboard_task = thread::spawn(move || {
-        KeyboardControl::main(cmd_vel_tx);
+        KeyboardControl::main_thread(cmd_vel_tx);
     });
     //join!(motor_task.await, keyboard_task.await);
     motor_task.join().unwrap();

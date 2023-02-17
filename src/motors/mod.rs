@@ -18,15 +18,13 @@ impl Motors {
 
     pub fn main(rx: Receiver<(i32, i32, i32)>) {
         println!("We are executing code inside the main function of the Motors");
-        thread::spawn(move || {
-            // println!("Starting Motors thread");
-            loop {
-                // thread::sleep(Duration::from_millis(1000));
+        // println!("Starting Motors thread");
+        loop {
+            // thread::sleep(Duration::from_millis(1000));
 
-                let (x, y, theta) = rx.recv().unwrap();
-                let val = String::from("coucou");
-                println!(" Received Vx = {}, Vy = {}, Vtheta = {}", x, y, theta);
-            }
-        });
+            let (x, y, theta) = rx.recv().unwrap();
+            let val = String::from("coucou");
+            println!(" Received Vx = {}, Vy = {}, Vtheta = {}", x, y, theta);
+        }
     }
 }

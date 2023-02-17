@@ -32,6 +32,8 @@ use std::sync::mpsc;
 use RustSbire::key_control::KeyboardControl;
 use RustSbire::motors::Motors;
 
+use std::thread;
+
 
 
 fn main() {
@@ -52,10 +54,12 @@ fn main() {
                                                             KeyboardControl::new());
 
     
-
-    let _motor_task = Motors::main(cmd_vel_rx);
-    let _keyboard_task = KeyboardControl::main(cmd_vel_tx);
-
+    thread::spawn(move || {
+        let _motor_task = Motors::main(cmd_vel_rx);
+    });
+    thread::spawn(move || {
+        let _keyboard_task = KeyboardControl::main(cmd_vel_tx);
+    });
     // join!(motor_task, keyboard_task);
 
     loop {}

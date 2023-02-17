@@ -30,7 +30,7 @@
 //use std::future::join;
 use std::sync::mpsc;
 
-use rust_sbire::{key_control::KeyboardControl, motors::Motors, Component};
+use rust_sbire::{key_control::KeyboardControl, motors::Motors, Component, effet_hall::EffetHallAlgo};
 
 use std::thread;
 
@@ -45,14 +45,13 @@ fn main() {
         | cmd_vel            | Control       | Motors       |
     */
     let (cmd_vel_tx, cmd_vel_rx) = mpsc::channel();
-
-
-    // let m_motors = Motors::new();
-    // let m_keyboard = KeyboardControl::new();
+    let (cmd_vel_tx1, cmd_vel_rx1) = mpsc::channel();
+    let (cmd_vel_tx2, cmd_vel_rx2) = mpsc::channel();
 
     let _my_components = (
         Motors::default(), 
         KeyboardControl::default(),
+        EffetHallAlgo::default(),
     );
 
     let motor_task = thread::spawn(move || {
@@ -61,26 +60,11 @@ fn main() {
     let keyboard_task = thread::spawn(move || {
         KeyboardControl::main_thread(cmd_vel_tx);
     });
-    //join!(motor_task.await, keyboard_task.await);
+    let algo_hall_task = thread::spawn(move || {
+        EffetHallAlgo::main_thread((cmd_vel_tx1, cmd_vel_rx2));
+    });
+
     motor_task.join().unwrap();
     keyboard_task.join().unwrap();
-    //loop {}
-
-    // thread::spawn(move || {
-    //     println!("Starting keyControl thread");
-    //     loop {
-    //         thread::sleep(Duration::from_millis(1000));
-    //         let val = String::from("coucou");
-    //         cmd_vel_tx.send(val).unwrap();
-    //     }
-    // });
-
-
-
-
-
-
-
-
-
+    algo_hall_task.join().unwrap();
 }

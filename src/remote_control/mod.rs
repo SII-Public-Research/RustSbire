@@ -6,28 +6,39 @@ pub struct RemoteControl {
     _quoi_mettre: u32,
 }
 
-type SenderRemoteMode = (Sender<(i32, i32, i32)>, Sender<(i32, i32, i32)>);
+type SenderRemoteMode = (Sender<Velocity>, Sender<Mode>);
 
 impl Component<SenderRemoteMode> for RemoteControl {
     fn init() -> Self {
-        println!("keyboard control is initialised");
+        println!("Remote control is initialised");
         RemoteControl { _quoi_mettre: 0 }
     }
 
     fn main_thread((tx_remote, tx_mode): SenderRemoteMode) {
-        println!("We are executing code inside the main function of the KeyboardControl");
-        let (mut x, mut y, mut theta) = (0, 0, 0);
-        // println!("Starting KeyboardControl thread");
+        println!("We are executing code inside the main function of the RemoteControl");
+        //let (mut x, mut y, mut theta) = (0, 0, 0);
+        let mut vel = Velocity {
+            x: 0.,
+            y: 0.,
+            theta: 0.,
+        };
+        let mut mode = Mode {
+            controlled_by_remote: false,
+        };
+        // println!("Starting RemoteControl thread");
         loop {
             thread::sleep(Duration::from_millis(1000));
 
             // Algorithmie
-            x += 1;
-            y += 1;
-            theta += 1;
+            vel.x += 1.;
+            vel.y += 1.;
+            vel.theta += 1.;
 
             // On met tout ca dans le channel
-            tx_remote.send((x, y, theta)).unwrap();
+            tx_remote.send(vel).unwrap();
+
+            mode.controlled_by_remote = !mode.controlled_by_remote;
+            tx_mode.send(mode).unwrap();
         }
     }
 }

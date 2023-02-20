@@ -5,11 +5,11 @@ use super::*;
 pub struct EffetHallAlgo {
     _quoi_mettre: u32,
 }
-type SenderReceiver = (Sender<(i32, i32, i32)>, Receiver<(i32, i32, i32)>);
+type SenderReceiver = (Sender<Position>, Receiver<BFieldData>);
 
 impl Component<SenderReceiver> for EffetHallAlgo {
     fn init() -> Self {
-        println!("keyboard control is initialised");
+        println!("EffetHallAlgo is initialised");
         EffetHallAlgo { _quoi_mettre: 0 }
     }
 
@@ -26,7 +26,7 @@ impl Component<SenderReceiver> for EffetHallAlgo {
             theta += 1;
 
             // On met tout ca dans le channel
-            tx.send((x, y, theta)).unwrap();
+            //tx.send((x, y, theta)).unwrap();
         }
     }
 }

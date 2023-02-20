@@ -6,13 +6,13 @@ pub struct EffetHallData {
     _quoi_mettre: u32,
 }
 
-impl Component<Sender<(i32, i32, i32)>> for EffetHallData {
+impl Component<Sender<BFieldData>> for EffetHallData {
     fn init() -> Self {
-        println!("keyboard control is initialised");
+        println!("EffetHallData is initialised");
         EffetHallData { _quoi_mettre: 0 }
     }
 
-    fn main_thread(tx: Sender<(i32, i32, i32)>) {
+    fn main_thread(tx: Sender<BFieldData>) {
         println!("We are executing code inside the main function of the EffetHallData");
         let (mut x, mut y, mut theta) = (0, 0, 0);
         // println!("Starting EffetHallData thread");
@@ -25,7 +25,7 @@ impl Component<Sender<(i32, i32, i32)>> for EffetHallData {
             theta += 1;
 
             // On met tout ca dans le channel
-            tx.send((x, y, theta)).unwrap();
+            //tx.send((x, y, theta)).unwrap();
         }
     }
 }

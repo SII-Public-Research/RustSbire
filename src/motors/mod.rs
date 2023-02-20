@@ -18,7 +18,7 @@ impl Component<ReceiversRemoteAlgoMode> for Motors {
         }
     }
 
-    fn main_thread((rx_remote, rx_algo, rx_mode): ReceiversRemoteAlgoMode) {
+    fn main_thread(self, (rx_remote, rx_algo, rx_mode): ReceiversRemoteAlgoMode) {
         println!("We are executing code inside the main function of the Motors");
 
         loop {

@@ -10,7 +10,7 @@ pub mod remote_control;
 /// Composant par défaut, A est le type de variable échangée entre threads
 pub trait Component<A> {
     fn init() -> Self;
-    fn main_thread(arg: A);
+    fn main_thread(self, arg: A);
 }
 
 /// Données de champs magnétique

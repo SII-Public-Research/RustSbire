@@ -12,7 +12,7 @@ impl Component<Sender<BFieldData>> for EffetHallData {
         EffetHallData { _quoi_mettre: 0 }
     }
 
-    fn main_thread(tx: Sender<BFieldData>) {
+    fn main_thread(self, tx: Sender<BFieldData>) {
         println!("We are executing code inside the main function of the EffetHallData");
         let mut data = BFieldData {
             x: 0.,

@@ -55,28 +55,26 @@ fn main() {
     let (hall_data_tx, hall_data_rx) = mpsc::channel();
     let (mode_tx, mode_rx) = mpsc::channel();
 
-    let _my_components = (
-        Motors::init(),
-        RemoteControl::init(),
-        MovementAlgo::init(),
-        EffetHallAlgo::init(),
-        EffetHallData::init(),
-    );
+    let motors = Motors::init();
+    let remote = RemoteControl::init();
+    let movement = MovementAlgo::init();
+    let algo_hall = EffetHallAlgo::init();
+    let hall_data = EffetHallData::init();
 
     let motor_task = thread::spawn(move || {
-        Motors::main_thread((remote_cmd_vel_rx, algo_cmd_vel_rx, mode_rx));
+        motors.main_thread((remote_cmd_vel_rx, algo_cmd_vel_rx, mode_rx));
     });
     let remote_control_task = thread::spawn(move || {
-        RemoteControl::main_thread((remote_cmd_vel_tx, mode_tx));
+        remote.main_thread((remote_cmd_vel_tx, mode_tx));
     });
     let algo_move_task = thread::spawn(move || {
-        MovementAlgo::main_thread((algo_cmd_vel_tx, position_rx));
+        movement.main_thread((algo_cmd_vel_tx, position_rx));
     });
     let algo_hall_task = thread::spawn(move || {
-        EffetHallAlgo::main_thread((position_tx, hall_data_rx));
+        algo_hall.main_thread((position_tx, hall_data_rx));
     });
     let data_hall_task = thread::spawn(move || {
-        EffetHallData::main_thread(hall_data_tx);
+        hall_data.main_thread(hall_data_tx);
     });
 
     motor_task.join().unwrap();

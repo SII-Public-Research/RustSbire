@@ -13,7 +13,7 @@ impl Component<SenderReceiver> for EffetHallAlgo {
         EffetHallAlgo { _quoi_mettre: 0 }
     }
 
-    fn main_thread((tx, rx): SenderReceiver) {
+    fn main_thread(self, (tx, rx): SenderReceiver) {
         println!("We are executing code inside the main function of the EffetHallAlgo");
         let mut pos = Position { x: 0., y: 0. };
 

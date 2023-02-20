@@ -14,7 +14,7 @@ impl Component<SenderRemoteMode> for RemoteControl {
         RemoteControl { _quoi_mettre: 0 }
     }
 
-    fn main_thread((tx_remote, tx_mode): SenderRemoteMode) {
+    fn main_thread(self, (tx_remote, tx_mode): SenderRemoteMode) {
         println!("We are executing code inside the main function of the RemoteControl");
         let mut vel = Velocity {
             x: 0.,

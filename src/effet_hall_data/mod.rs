@@ -14,24 +14,22 @@ impl Component<Sender<BFieldData>> for EffetHallData {
 
     fn main_thread(tx: Sender<BFieldData>) {
         println!("We are executing code inside the main function of the EffetHallData");
-        let (mut x, mut y, mut theta) = (0, 0, 0);
-        // println!("Starting EffetHallData thread");
+        let mut data = BFieldData {
+            x: 0.,
+            y: 0.,
+            z: 0.,
+        };
+
         loop {
             thread::sleep(Duration::from_millis(1000));
 
             // Algorithmie
-            x += 1;
-            y += 1;
-            theta += 1;
+            data.x += 1.;
+            data.y += 1.;
+            data.z += 1.;
 
             // On met tout ca dans le channel
-            //tx.send((x, y, theta)).unwrap();
+            tx.send(data).unwrap();
         }
-    }
-}
-
-impl Default for EffetHallData {
-    fn default() -> Self {
-        Self::init()
     }
 }

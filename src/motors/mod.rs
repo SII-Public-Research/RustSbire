@@ -20,7 +20,7 @@ impl Component<ReceiversRemoteAlgoMode> for Motors {
 
     fn main_thread((rx_remote, rx_algo, rx_mode): ReceiversRemoteAlgoMode) {
         println!("We are executing code inside the main function of the Motors");
-        // println!("Starting Motors thread");
+
         loop {
             thread::sleep(Duration::from_millis(1000));
 
@@ -53,11 +53,5 @@ impl Component<ReceiversRemoteAlgoMode> for Motors {
             //println!(" Algo Vx = {}, Vy = {}, Vtheta = {}", algo_vel.x, algo_vel.y, algo_vel.theta);
             //println!(" Mode = {}", mode.controlled_by_remote);
         }
-    }
-}
-
-impl Default for Motors {
-    fn default() -> Self {
-        Self::init()
     }
 }

@@ -16,7 +16,6 @@ impl Component<SenderRemoteMode> for RemoteControl {
 
     fn main_thread((tx_remote, tx_mode): SenderRemoteMode) {
         println!("We are executing code inside the main function of the RemoteControl");
-        //let (mut x, mut y, mut theta) = (0, 0, 0);
         let mut vel = Velocity {
             x: 0.,
             y: 0.,
@@ -25,7 +24,7 @@ impl Component<SenderRemoteMode> for RemoteControl {
         let mut mode = Mode {
             controlled_by_remote: false,
         };
-        // println!("Starting RemoteControl thread");
+
         loop {
             thread::sleep(Duration::from_millis(1000));
 
@@ -40,11 +39,5 @@ impl Component<SenderRemoteMode> for RemoteControl {
             mode.controlled_by_remote = !mode.controlled_by_remote;
             tx_mode.send(mode).unwrap();
         }
-    }
-}
-
-impl Default for RemoteControl {
-    fn default() -> Self {
-        Self::init()
     }
 }

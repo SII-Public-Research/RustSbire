@@ -15,24 +15,26 @@ impl Component<SenderReceiver> for EffetHallAlgo {
 
     fn main_thread((tx, rx): SenderReceiver) {
         println!("We are executing code inside the main function of the EffetHallAlgo");
-        let (mut x, mut y, mut theta) = (0, 0, 0);
-        // println!("Starting EffetHallAlgo thread");
+        let mut pos = Position { x: 0., y: 0. };
+
         loop {
             thread::sleep(Duration::from_millis(1000));
 
+            let bfield = rx.try_recv();
+            if bfield.is_ok() {
+                println!(
+                    " B Field x = {}, y = {}, z = {}",
+                    bfield.unwrap().x,
+                    bfield.unwrap().y,
+                    bfield.unwrap().z
+                );
+            }
             // Algorithmie
-            x += 1;
-            y += 1;
-            theta += 1;
+            pos.x += 0.5;
+            pos.y += 0.5;
 
             // On met tout ca dans le channel
-            //tx.send((x, y, theta)).unwrap();
+            tx.send(pos).unwrap();
         }
-    }
-}
-
-impl Default for EffetHallAlgo {
-    fn default() -> Self {
-        Self::init()
     }
 }

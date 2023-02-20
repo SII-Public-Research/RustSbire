@@ -15,16 +15,19 @@ impl Component<SenderReceiver> for MovementAlgo {
 
     fn main_thread((tx, rx): SenderReceiver) {
         println!("We are executing code inside the main function of the MovementAlgo");
-        //let (mut x, mut y, mut theta) = (0, 0, 0);
         let mut vel = Velocity {
             x: 0.,
             y: 0.,
             theta: 0.,
         };
-        // println!("Starting RemoteControl thread");
+
         loop {
             thread::sleep(Duration::from_millis(1000));
 
+            let pos = rx.try_recv();
+            if pos.is_ok() {
+                println!(" Pos x = {}, y = {}", pos.unwrap().x, pos.unwrap().y);
+            }
             // Algorithmie
             vel.x -= 1.;
             vel.y -= 0.2;
@@ -33,11 +36,5 @@ impl Component<SenderReceiver> for MovementAlgo {
             // On met tout ca dans le channel
             tx.send(vel).unwrap();
         }
-    }
-}
-
-impl Default for MovementAlgo {
-    fn default() -> Self {
-        Self::init()
     }
 }

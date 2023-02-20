@@ -56,11 +56,11 @@ fn main() {
     let (mode_tx, mode_rx) = mpsc::channel();
 
     let _my_components = (
-        Motors::default(),
-        RemoteControl::default(),
-        MovementAlgo::default(),
-        EffetHallAlgo::default(),
-        EffetHallData::default(),
+        Motors::init(),
+        RemoteControl::init(),
+        MovementAlgo::init(),
+        EffetHallAlgo::init(),
+        EffetHallData::init(),
     );
 
     let motor_task = thread::spawn(move || {

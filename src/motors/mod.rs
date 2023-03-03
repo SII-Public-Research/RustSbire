@@ -1,28 +1,25 @@
-use std::sync::mpsc::Receiver;
+use std::time::Duration;
 
-use super::*;
+use rust_sbire::Component;
+use tokio::{sync::mpsc::Receiver, time::sleep};
 
-pub struct Motors {
-    _left: u32,
-    _right: u32,
+use crate::{Mode, Velocity};
+
+pub struct Motors;
+
+struct MotorData {
+    left: u32,
+    right: u32,
 }
 
 type ReceiversRemoteAlgoMode = (Receiver<Velocity>, Receiver<Velocity>, Receiver<Mode>);
-
 impl Component<ReceiversRemoteAlgoMode> for Motors {
-    fn init() -> Self {
-        println!("Motors are initialized !");
-        Motors {
-            _left: 0,
-            _right: 0,
-        }
-    }
-
-    fn main_thread(self, (rx_remote, rx_algo, rx_mode): ReceiversRemoteAlgoMode) {
+    async fn run((mut rx_remote, mut rx_algo, mut rx_mode): ReceiversRemoteAlgoMode) {
+        let mut data = MotorData { left: 0, right: 0 };
         println!("We are executing code inside the main function of the Motors");
 
         loop {
-            thread::sleep(Duration::from_millis(1000));
+            sleep(Duration::from_millis(1000)).await;
 
             let remote_vel = rx_remote.try_recv();
             if remote_vel.is_ok() {

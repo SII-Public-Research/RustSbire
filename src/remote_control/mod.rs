@@ -1,21 +1,16 @@
-use std::sync::mpsc::Sender;
+use std::time::Duration;
 
-use super::*;
+use rust_sbire::Component;
+use tokio::{sync::mpsc::Sender, time::sleep};
 
-pub struct RemoteControl {
-    _quoi_mettre: u32,
-}
+use crate::{Mode, Velocity};
+
+pub struct RemoteControl;
 
 type SenderRemoteMode = (Sender<Velocity>, Sender<Mode>);
-
 impl Component<SenderRemoteMode> for RemoteControl {
-    fn init() -> Self {
+    async fn run((tx_remote, tx_mode): SenderRemoteMode) {
         println!("Remote control is initialised");
-        RemoteControl { _quoi_mettre: 0 }
-    }
-
-    fn main_thread(self, (tx_remote, tx_mode): SenderRemoteMode) {
-        println!("We are executing code inside the main function of the RemoteControl");
         let mut vel = Velocity {
             x: 0.,
             y: 0.,
@@ -26,7 +21,7 @@ impl Component<SenderRemoteMode> for RemoteControl {
         };
 
         loop {
-            thread::sleep(Duration::from_millis(1000));
+            sleep(Duration::from_millis(1000)).await;
 
             // Algorithmie
             vel.x += 1.;
@@ -34,10 +29,10 @@ impl Component<SenderRemoteMode> for RemoteControl {
             vel.theta += 1.;
 
             // On met tout ca dans le channel
-            tx_remote.send(vel).unwrap();
+            tx_remote.send(vel).await.unwrap();
 
             mode.controlled_by_remote = !mode.controlled_by_remote;
-            tx_mode.send(mode).unwrap();
+            tx_mode.send(mode).await.unwrap();
         }
     }
 }

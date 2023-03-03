@@ -1,19 +1,18 @@
-use std::sync::mpsc::{Receiver, Sender};
+use std::time::Duration;
 
-use super::*;
+use rust_sbire::Component;
+use tokio::{
+    sync::mpsc::{Receiver, Sender},
+    time::sleep,
+};
 
-pub struct MovementAlgo {
-    _quoi_mettre: u32,
-}
+use crate::{Position, Velocity};
+
+pub struct MovementAlgo;
+
 type SenderReceiver = (Sender<Velocity>, Receiver<Position>);
-
 impl Component<SenderReceiver> for MovementAlgo {
-    fn init() -> Self {
-        println!("MovementAlgo is initialised");
-        MovementAlgo { _quoi_mettre: 0 }
-    }
-
-    fn main_thread(self, (tx, rx): SenderReceiver) {
+    async fn run((tx, mut rx): SenderReceiver) {
         println!("We are executing code inside the main function of the MovementAlgo");
         let mut vel = Velocity {
             x: 0.,
@@ -22,7 +21,7 @@ impl Component<SenderReceiver> for MovementAlgo {
         };
 
         loop {
-            thread::sleep(Duration::from_millis(1000));
+            sleep(Duration::from_millis(1000)).await;
 
             let pos = rx.try_recv();
             if pos.is_ok() {
@@ -34,7 +33,7 @@ impl Component<SenderReceiver> for MovementAlgo {
             vel.theta -= 0.01;
 
             // On met tout ca dans le channel
-            tx.send(vel).unwrap();
+            tx.send(vel).await.unwrap();
         }
     }
 }

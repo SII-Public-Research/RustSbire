@@ -27,17 +27,53 @@
 //!
 //!
 //!
-//use std::future::join;
-use std::sync::mpsc;
 
-use rust_sbire::{
+#![feature(async_fn_in_trait)]
+
+use tokio::{join, sync::mpsc};
+
+use {
     effet_hall_algo::EffetHallAlgo, effet_hall_data::EffetHallData, motors::Motors,
-    movement_algo::MovementAlgo, remote_control::RemoteControl, Component,
+    movement_algo::MovementAlgo, remote_control::RemoteControl, rust_sbire::Component,
 };
 
-use std::thread;
+pub mod effet_hall_algo;
+pub mod effet_hall_data;
+pub mod motors;
+pub mod movement_algo;
+pub mod remote_control;
 
-fn main() {
+/// Données de champs magnétique
+#[derive(Debug, Clone, Copy)]
+pub struct BFieldData {
+    x: f32,
+    y: f32,
+    z: f32,
+}
+
+/// Données de vitesse linéaires et angulaires
+#[derive(Debug, Clone, Copy)]
+pub struct Velocity {
+    x: f32,     // m/s
+    y: f32,     // m/s
+    theta: f32, // rad/s
+}
+
+/// Données de position
+#[derive(Debug, Clone, Copy)]
+pub struct Position {
+    x: f32, // m
+    y: f32, // m
+}
+
+/// Mode
+#[derive(Debug, Clone, Copy)]
+pub struct Mode {
+    controlled_by_remote: bool,
+}
+
+#[tokio::main]
+async fn main() {
     println!("Coucou, petit sbire !");
 
     /* HERE WILL BE ALL THE CHANNEL AND THEIR DESCRIPTIONS
@@ -49,37 +85,27 @@ fn main() {
         | hall_data          | EffetHallData | EffetHallAlgo |
         | mode               | RemoteControl | Motors        |
     */
-    let (remote_cmd_vel_tx, remote_cmd_vel_rx) = mpsc::channel();
-    let (algo_cmd_vel_tx, algo_cmd_vel_rx) = mpsc::channel();
-    let (position_tx, position_rx) = mpsc::channel();
-    let (hall_data_tx, hall_data_rx) = mpsc::channel();
-    let (mode_tx, mode_rx) = mpsc::channel();
+    let (remote_cmd_vel_tx, remote_cmd_vel_rx) = mpsc::channel(4);
+    let (algo_cmd_vel_tx, algo_cmd_vel_rx) = mpsc::channel(4);
+    let (position_tx, position_rx) = mpsc::channel(4);
+    let (hall_data_tx, hall_data_rx) = mpsc::channel(4);
+    let (mode_tx, mode_rx) = mpsc::channel(4);
 
-    let motors = Motors::init();
-    let remote = RemoteControl::init();
-    let movement = MovementAlgo::init();
-    let algo_hall = EffetHallAlgo::init();
-    let hall_data = EffetHallData::init();
+    let motor_task = Motors::run((remote_cmd_vel_rx, algo_cmd_vel_rx, mode_rx));
 
-    let motor_task = thread::spawn(move || {
-        motors.main_thread((remote_cmd_vel_rx, algo_cmd_vel_rx, mode_rx));
-    });
-    let remote_control_task = thread::spawn(move || {
-        remote.main_thread((remote_cmd_vel_tx, mode_tx));
-    });
-    let algo_move_task = thread::spawn(move || {
-        movement.main_thread((algo_cmd_vel_tx, position_rx));
-    });
-    let algo_hall_task = thread::spawn(move || {
-        algo_hall.main_thread((position_tx, hall_data_rx));
-    });
-    let data_hall_task = thread::spawn(move || {
-        hall_data.main_thread(hall_data_tx);
-    });
+    let remote_control_task = RemoteControl::run((remote_cmd_vel_tx, mode_tx));
 
-    motor_task.join().unwrap();
-    remote_control_task.join().unwrap();
-    algo_move_task.join().unwrap();
-    algo_hall_task.join().unwrap();
-    data_hall_task.join().unwrap();
+    let algo_move_task = MovementAlgo::run((algo_cmd_vel_tx, position_rx));
+
+    let algo_hall_task = EffetHallAlgo::run((position_tx, hall_data_rx));
+
+    let data_hall_task = EffetHallData::run(hall_data_tx);
+
+    join!(
+        motor_task,
+        remote_control_task,
+        algo_move_task,
+        algo_hall_task,
+        data_hall_task
+    );
 }

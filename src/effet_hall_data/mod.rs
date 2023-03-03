@@ -1,18 +1,14 @@
-use std::sync::mpsc::Sender;
+use std::time::Duration;
 
-use super::*;
+use rust_sbire::Component;
+use tokio::{sync::mpsc::Sender, time::sleep};
 
-pub struct EffetHallData {
-    _quoi_mettre: u32,
-}
+use crate::BFieldData;
+
+pub struct EffetHallData;
 
 impl Component<Sender<BFieldData>> for EffetHallData {
-    fn init() -> Self {
-        println!("EffetHallData is initialised");
-        EffetHallData { _quoi_mettre: 0 }
-    }
-
-    fn main_thread(self, tx: Sender<BFieldData>) {
+    async fn run(tx: Sender<BFieldData>) {
         println!("We are executing code inside the main function of the EffetHallData");
         let mut data = BFieldData {
             x: 0.,
@@ -21,7 +17,7 @@ impl Component<Sender<BFieldData>> for EffetHallData {
         };
 
         loop {
-            thread::sleep(Duration::from_millis(1000));
+            sleep(Duration::from_millis(1000)).await;
 
             // Algorithmie
             data.x += 1.;
@@ -29,7 +25,7 @@ impl Component<Sender<BFieldData>> for EffetHallData {
             data.z += 1.;
 
             // On met tout ca dans le channel
-            tx.send(data).unwrap();
+            tx.send(data).await.unwrap();
         }
     }
 }

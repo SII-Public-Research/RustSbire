@@ -1,24 +1,23 @@
-use std::sync::mpsc::{Receiver, Sender};
+use std::time::Duration;
 
-use super::*;
+use rust_sbire::Component;
+use tokio::{
+    sync::mpsc::{Receiver, Sender},
+    time::sleep,
+};
 
-pub struct EffetHallAlgo {
-    _quoi_mettre: u32,
-}
+use crate::{BFieldData, Position};
+
+pub struct EffetHallAlgo;
+
 type SenderReceiver = (Sender<Position>, Receiver<BFieldData>);
-
 impl Component<SenderReceiver> for EffetHallAlgo {
-    fn init() -> Self {
-        println!("EffetHallAlgo is initialised");
-        EffetHallAlgo { _quoi_mettre: 0 }
-    }
-
-    fn main_thread(self, (tx, rx): SenderReceiver) {
+    async fn run((tx, mut rx): SenderReceiver) {
         println!("We are executing code inside the main function of the EffetHallAlgo");
         let mut pos = Position { x: 0., y: 0. };
 
         loop {
-            thread::sleep(Duration::from_millis(1000));
+            sleep(Duration::from_millis(1000)).await;
 
             let bfield = rx.try_recv();
             if bfield.is_ok() {
@@ -34,7 +33,7 @@ impl Component<SenderReceiver> for EffetHallAlgo {
             pos.y += 0.5;
 
             // On met tout ca dans le channel
-            tx.send(pos).unwrap();
+            tx.send(pos).await.unwrap();
         }
     }
 }

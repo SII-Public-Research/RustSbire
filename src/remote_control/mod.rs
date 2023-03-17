@@ -73,9 +73,9 @@ impl Component<Sender<ControlMode>> for RemoteControl {
                     } else if ds2.buttons.down() {
                         (-100., 0.)
                     } else if ds2.buttons.left() {
-                        (0., -100.)
-                    } else if ds2.buttons.right() {
                         (0., 100.)
+                    } else if ds2.buttons.right() {
+                        (0., -100.)
                     } else {
                         (0., 0.)
                     };

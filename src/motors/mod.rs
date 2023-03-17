@@ -1,9 +1,12 @@
 use std::time::Duration;
 
 use rust_sbire::Component;
-use tokio::{sync::mpsc::Receiver, time::sleep};
+use tokio::{
+    sync::mpsc::{error::TryRecvError, Receiver},
+    time::{sleep, timeout, Instant},
+};
 
-use crate::{Mode, Velocity};
+use crate::{ControlMode, Velocity};
 
 pub struct Motors;
 
@@ -12,37 +15,45 @@ struct MotorData {
     right: u32,
 }
 
-type ReceiversRemoteAlgoMode = (Receiver<Velocity>, Receiver<Velocity>, Receiver<Mode>);
+type ReceiversRemoteAlgoMode = (Receiver<ControlMode>, Receiver<Velocity>);
 impl Component<ReceiversRemoteAlgoMode> for Motors {
-    async fn run((mut rx_remote, mut rx_algo, mut rx_mode): ReceiversRemoteAlgoMode) {
+    type Error = eyre::Report;
+
+    async fn run((mut rx_remote, mut rx_algo): ReceiversRemoteAlgoMode) -> eyre::Result<()> {
+        const CMD_TIMEOUT: Duration = Duration::from_millis(100);
+
         let mut data = MotorData { left: 0, right: 0 };
         println!("We are executing code inside the main function of the Motors");
 
         loop {
-            sleep(Duration::from_millis(1000)).await;
+            // Make sure to always receive from both channels, to prevent the buffers getting full.
+            let remote_cmd = timeout(CMD_TIMEOUT, rx_remote.recv()).await;
+            let algo_cmd = rx_algo.try_recv();
 
-            let remote_vel = rx_remote.try_recv();
-            if remote_vel.is_ok() {
-                println!(
-                    " Remote Vx = {}, Vy = {}, Vtheta = {}",
-                    remote_vel.unwrap().x,
-                    remote_vel.unwrap().y,
-                    remote_vel.unwrap().theta
-                );
-            }
-            let algo_vel = rx_algo.try_recv();
-            if algo_vel.is_ok() {
-                println!(
-                    " Algo Vx = {}, Vy = {}, Vtheta = {}",
-                    algo_vel.unwrap().x,
-                    algo_vel.unwrap().y,
-                    algo_vel.unwrap().theta
-                );
-            }
-            let mode = rx_mode.try_recv();
-            if mode.is_ok() {
-                println!(" Mode = {}", mode.unwrap().controlled_by_remote);
-            }
+            let velocity = match (remote_cmd, algo_cmd) {
+                (Ok(None), _) => {
+                    println!("[motors] Remote's channel was closed, ending...");
+                    return Ok(());
+                }
+                (_, Err(TryRecvError::Disconnected)) => {
+                    println!("[motors] Algo's channel was closed, ending...");
+                    return Ok(());
+                }
+                // We must at least receive the remote's command, since it indicates whether we should accept the algo's.
+                (Err(_), _) | (Ok(Some(ControlMode::Automatic)), Err(TryRecvError::Empty)) => {
+                    println!("[motors] Command reception timed out, stopping motors");
+                    // TODO
+                    continue;
+                }
+                // All's safe! Now we can pick one of the two.
+                (Ok(Some(ControlMode::Manual(cmd))), _) => cmd,
+                (Ok(Some(ControlMode::Automatic)), Ok(cmd)) => cmd,
+            };
+
+            println!(
+                "[motors] Vx = {}, Vy = {}, Vtheta = {}",
+                velocity.x, velocity.y, velocity.theta
+            );
             //let algo_vel = rx_algo.recv().unwrap();
             //let mode = rx_mode.recv().unwrap();
 

@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use eyre::Context;
 use rust_sbire::Component;
 use tokio::{
     sync::mpsc::{Receiver, Sender},
@@ -12,7 +13,9 @@ pub struct MovementAlgo;
 
 type SenderReceiver = (Sender<Velocity>, Receiver<Position>);
 impl Component<SenderReceiver> for MovementAlgo {
-    async fn run((tx, mut rx): SenderReceiver) {
+    type Error = eyre::Report;
+
+    async fn run((tx, mut rx): SenderReceiver) -> eyre::Result<()> {
         println!("We are executing code inside the main function of the MovementAlgo");
         let mut vel = Velocity {
             x: 0.,
@@ -24,8 +27,8 @@ impl Component<SenderReceiver> for MovementAlgo {
             sleep(Duration::from_millis(1000)).await;
 
             let pos = rx.try_recv();
-            if pos.is_ok() {
-                println!(" Pos x = {}, y = {}", pos.unwrap().x, pos.unwrap().y);
+            if let Ok(Position { x, y }) = pos {
+                // println!(" Pos x = {x}, y = {y}");
             }
             // Algorithmie
             vel.x -= 1.;
@@ -33,7 +36,9 @@ impl Component<SenderReceiver> for MovementAlgo {
             vel.theta -= 0.01;
 
             // On met tout ca dans le channel
-            tx.send(vel).await.unwrap();
+            tx.send(vel)
+                .await
+                .wrap_err("Failure to send movement algo")?;
         }
     }
 }

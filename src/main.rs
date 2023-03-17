@@ -89,19 +89,15 @@ async fn main() -> eyre::Result<()> {
         | mode               | RemoteControl | Motors        |
     */
     let (remote_cmd_tx, remote_cmd_rx) = mpsc::channel(4);
-    let (algo_cmd_vel_tx, algo_cmd_vel_rx) = mpsc::channel(4);
-    let (position_tx, position_rx) = mpsc::channel(4);
     let (hall_data_tx, hall_data_rx) = mpsc::channel(4);
-
-    let motor_task = Motors::run((remote_cmd_rx, algo_cmd_vel_rx));
+    let (position_tx, position_rx) = mpsc::channel(4);
+    let (algo_cmd_vel_tx, algo_cmd_vel_rx) = mpsc::channel(4);
 
     let remote_control_task = RemoteControl::run(remote_cmd_tx);
-
-    let algo_move_task = MovementAlgo::run((algo_cmd_vel_tx, position_rx));
-
-    let algo_hall_task = EffetHallAlgo::run((position_tx, hall_data_rx));
-
     let data_hall_task = EffetHallData::run(hall_data_tx);
+    let algo_hall_task = EffetHallAlgo::run((position_tx, hall_data_rx));
+    let algo_move_task = MovementAlgo::run((algo_cmd_vel_tx, position_rx));
+    let motor_task = Motors::run((remote_cmd_rx, algo_cmd_vel_rx));
 
     try_join!(
         motor_task,

@@ -52,7 +52,7 @@ pub struct BFieldData {
 }
 
 /// Données de vitesse linéaires et angulaires
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Velocity {
     /// In m/s
     x: f32,

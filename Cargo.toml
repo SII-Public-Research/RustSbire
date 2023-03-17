@@ -7,5 +7,6 @@ edition = "2021"
 color-eyre = "0.6.2"
 eyre = "0.6.8"
 linux-embedded-hal = "0.2.2"
-pscontroller-rs = { git = "https://github.com/RandomInsano/pscontroller-rs.git", branch = "master" }
+pscontroller-rs = { path = "../pscontroller-rs" } # { git = "https://github.com/RandomInsano/pscontroller-rs.git", branch = "master" }
+sna41-motorshield = { git = "https://github.com/SII-Public-Research/sna41_motorshield.git", branch = "main" }
 tokio = { version = "1.26.0", features = [ "macros", "rt", "rt-multi-thread", "sync", "time" ] }

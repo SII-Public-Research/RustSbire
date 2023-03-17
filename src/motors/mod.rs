@@ -1,6 +1,9 @@
 use std::time::Duration;
 
+use eyre::Context;
+use linux_embedded_hal::I2cdev;
 use rust_sbire::Component;
+use sna41_motorshield::MotorShield;
 use tokio::{
     sync::mpsc::{error::TryRecvError, Receiver},
     time::{sleep, timeout, Instant},
@@ -10,11 +13,6 @@ use crate::{ControlMode, Velocity};
 
 pub struct Motors;
 
-struct MotorData {
-    left: u32,
-    right: u32,
-}
-
 type ReceiversRemoteAlgoMode = (Receiver<ControlMode>, Receiver<Velocity>);
 impl Component<ReceiversRemoteAlgoMode> for Motors {
     type Error = eyre::Report;
@@ -22,8 +20,17 @@ impl Component<ReceiversRemoteAlgoMode> for Motors {
     async fn run((mut rx_remote, mut rx_algo): ReceiversRemoteAlgoMode) -> eyre::Result<()> {
         const CMD_TIMEOUT: Duration = Duration::from_millis(100);
 
-        let mut data = MotorData { left: 0, right: 0 };
-        println!("We are executing code inside the main function of the Motors");
+        let mut motor_shield =
+            MotorShield::new(I2cdev::new("/dev/i2c-1").wrap_err("Failed to open I2C device")?)
+                .expect("Failed to create MotorShield object"); // TODO: `expect` bad
+        let mut set_motors = |commands: MotorCommands| {
+            motor_shield
+                .set_all_motors(commands.raw())
+                .expect("Failed to set motors power") // TODO: `expect` bad
+        };
+
+        // Reset motors.
+        set_motors(Default::default());
 
         loop {
             // Make sure to always receive from both channels, to prevent the buffers getting full.
@@ -46,7 +53,7 @@ impl Component<ReceiversRemoteAlgoMode> for Motors {
                     continue;
                 }
                 // All's safe! Now we can pick one of the two.
-                (Ok(Some(ControlMode::Manual(cmd))), _) => cmd,
+                (Ok(Some(ControlMode::Manual(cmd))), _) => cmd, // A manual command overrides the algorithm.
                 (Ok(Some(ControlMode::Automatic)), Ok(cmd)) => cmd,
             };
 
@@ -54,12 +61,87 @@ impl Component<ReceiversRemoteAlgoMode> for Motors {
                 "[motors] Vx = {}, Vy = {}, Vtheta = {}",
                 velocity.x, velocity.y, velocity.theta
             );
-            //let algo_vel = rx_algo.recv().unwrap();
-            //let mode = rx_mode.recv().unwrap();
 
-            //println!(" Remote Vx = {}, Vy = {}, Vtheta = {}", remote_vel.x, remote_vel.y, remote_vel.theta);
-            //println!(" Algo Vx = {}, Vy = {}, Vtheta = {}", algo_vel.x, algo_vel.y, algo_vel.theta);
-            //println!(" Mode = {}", mode.controlled_by_remote);
+            set_motors(MotorCommands::from(&velocity));
         }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Default)]
+struct MotorCommands {
+    front_left: f32,
+    front_right: f32,
+    back_left: f32,
+    back_right: f32,
+}
+
+impl MotorCommands {
+    fn new(
+        mut front_left: f32,
+        mut front_right: f32,
+        mut back_left: f32,
+        mut back_right: f32,
+        max_rad: f32,
+    ) -> Self {
+        macro_rules! enforce_max {
+            ($who:ident) => {
+                let coef = $who.abs() / max_rad;
+                if coef > 1.0 {
+                    front_left /= coef;
+                    front_right /= coef;
+                    back_left /= coef;
+                    back_right /= coef;
+                }
+            };
+        }
+        enforce_max!(front_left);
+        enforce_max!(front_right);
+        enforce_max!(back_left);
+        enforce_max!(back_right);
+
+        Self {
+            front_left,
+            front_right,
+            back_left,
+            back_right,
+        }
+    }
+
+    fn raw(&self) -> [f32; 4] {
+        [
+            self.front_left,
+            self.front_right,
+            self.back_left,
+            self.back_right,
+        ]
+    }
+}
+
+impl From<&Velocity> for MotorCommands {
+    fn from(speed: &Velocity) -> Self {
+        const WHEEL_RADIUS: f32 = 0.028; // en m
+        const WHEEL_SEPARATION_X: f32 = 0.135 / 2.0; // en m
+        const WHEEL_SEPARATION_Y: f32 = 0.146 / 2.0; // en m
+
+        const MAX_RPM: f32 = 950.0; // nombre de rotations max d'une roue en une minute
+        const RAD_TO_RPM: f32 = 9.55; // constante de conversion : 60 / (2 * pi)
+
+        const MAX_RAD: f32 = MAX_RPM / RAD_TO_RPM;
+
+        // V_x,max = R/4*(motors.front_left + motors.front_right  + motors.back_left + motors.back_right)
+        // V_y,max = R/4*(-motors.front_left + motors.front_right  + motors.back_left - motors.back_right)
+        // W_z,max = R/(4*(L+l)) * (-motors.front_left + motors.front_right  - motors.back_left + motors.back_right)
+
+        let dx = speed.x;
+        let dy = speed.y;
+        let dtheta = speed.theta;
+
+        Self::new(
+            (1.0 / WHEEL_RADIUS) * (dx - dy - (WHEEL_SEPARATION_X + WHEEL_SEPARATION_Y) * dtheta), // en rad/s
+            (1.0 / WHEEL_RADIUS) * (dx + dy + (WHEEL_SEPARATION_X + WHEEL_SEPARATION_Y) * dtheta), // en rad/s
+            (1.0 / WHEEL_RADIUS) * (dx + dy - (WHEEL_SEPARATION_X + WHEEL_SEPARATION_Y) * dtheta), // en rad/s
+            (1.0 / WHEEL_RADIUS) * (dx - dy + (WHEEL_SEPARATION_X + WHEEL_SEPARATION_Y) * dtheta), // en rad/s
+            MAX_RAD,
+        )
     }
 }

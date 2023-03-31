@@ -46,27 +46,28 @@ pub mod remote_control;
 /// Données de champs magnétique
 #[derive(Debug, Clone, Copy)]
 pub struct BFieldData {
-    x: f32,
-    y: f32,
-    z: f32,
+    x: f64,
+    y: f64,
+    z: f64,
 }
 
 /// Données de vitesse linéaires et angulaires
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Velocity {
     /// In m/s
-    x: f32,
+    x: f64,
     /// In m/s
-    y: f32,
+    y: f64,
     /// In rad/s
-    theta: f32,
+    theta: f64,
 }
 
 /// Données de position
 #[derive(Debug, Clone, Copy)]
 pub struct Position {
-    x: f32, // m
-    y: f32, // m
+    x: f64,     // m
+    y: f64,     // m
+    theta: f64, // rad
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -94,7 +95,7 @@ async fn main() -> eyre::Result<()> {
     let (algo_cmd_vel_tx, algo_cmd_vel_rx) = mpsc::channel(4);
 
     let remote_control_task = RemoteControl::run(remote_cmd_tx);
-    let data_hall_task = EffetHallData::run(hall_data_tx);
+    let data_hall_task = EffetHallData::run((hall_data_tx, linux_embedded_hal::Delay));
     let algo_hall_task = EffetHallAlgo::run((position_tx, hall_data_rx));
     let algo_move_task = MovementAlgo::run((algo_cmd_vel_tx, position_rx));
     let motor_task = Motors::run((remote_cmd_rx, algo_cmd_vel_rx));
@@ -107,4 +108,8 @@ async fn main() -> eyre::Result<()> {
         data_hall_task
     )?;
     Ok(())
+}
+
+fn norm2d(x: f64, y: f64) -> f64 {
+    (x.powi(2) + y.powi(2)).sqrt()
 }

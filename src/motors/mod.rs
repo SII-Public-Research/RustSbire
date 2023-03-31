@@ -6,7 +6,7 @@ use rust_sbire::Component;
 use sna41_motorshield::MotorShield;
 use tokio::{
     sync::mpsc::{error::TryRecvError, Receiver},
-    time::{sleep, timeout, Instant},
+    time::timeout,
 };
 
 use crate::{ControlMode, Velocity};
@@ -69,19 +69,19 @@ impl Component<ReceiversRemoteAlgoMode> for Motors {
 
 #[derive(Debug, Copy, Clone, Default)]
 struct MotorCommands {
-    front_left: f32,
-    front_right: f32,
-    back_left: f32,
-    back_right: f32,
+    front_left: f64,
+    front_right: f64,
+    back_left: f64,
+    back_right: f64,
 }
 
 impl MotorCommands {
     fn new(
-        mut front_left: f32,
-        mut front_right: f32,
-        mut back_left: f32,
-        mut back_right: f32,
-        max_rad: f32,
+        mut front_left: f64,
+        mut front_right: f64,
+        mut back_left: f64,
+        mut back_right: f64,
+        max_rad: f64,
     ) -> Self {
         macro_rules! enforce_max {
             ($who:ident) => {
@@ -109,24 +109,24 @@ impl MotorCommands {
 
     fn raw(&self) -> [f32; 4] {
         [
-            self.front_left,
-            self.front_right,
-            self.back_left,
-            self.back_right,
+            self.front_left as f32,
+            self.front_right as f32,
+            self.back_left as f32,
+            self.back_right as f32,
         ]
     }
 }
 
 impl From<&Velocity> for MotorCommands {
     fn from(speed: &Velocity) -> Self {
-        const WHEEL_RADIUS: f32 = 0.028; // en m
-        const WHEEL_SEPARATION_X: f32 = 0.135 / 2.0; // en m
-        const WHEEL_SEPARATION_Y: f32 = 0.146 / 2.0; // en m
+        const WHEEL_RADIUS: f64 = 0.028; // en m
+        const WHEEL_SEPARATION_X: f64 = 0.135 / 2.0; // en m
+        const WHEEL_SEPARATION_Y: f64 = 0.146 / 2.0; // en m
 
-        const MAX_RPM: f32 = 950.0; // nombre de rotations max d'une roue en une minute
-        const RAD_TO_RPM: f32 = 9.55; // constante de conversion : 60 / (2 * pi)
+        const MAX_RPM: f64 = 950.0; // nombre de rotations max d'une roue en une minute
+        const RAD_TO_RPM: f64 = 9.55; // constante de conversion : 60 / (2 * pi)
 
-        const MAX_RAD: f32 = MAX_RPM / RAD_TO_RPM;
+        const MAX_RAD: f64 = MAX_RPM / RAD_TO_RPM;
 
         // V_x,max = R/4*(motors.front_left + motors.front_right  + motors.back_left + motors.back_right)
         // V_y,max = R/4*(-motors.front_left + motors.front_right  + motors.back_left - motors.back_right)

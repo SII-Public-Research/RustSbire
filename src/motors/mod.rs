@@ -1,13 +1,10 @@
-use std::time::Duration;
+use std::{ops::Deref, time::Duration};
 
 use eyre::Context;
 use linux_embedded_hal::I2cdev;
 use rust_sbire::Component;
 use sna41_motorshield::MotorShield;
-use tokio::{
-    sync::mpsc::{error::TryRecvError, Receiver},
-    time::timeout,
-};
+use tokio::{sync::watch::Receiver, time::timeout};
 
 use crate::{ControlMode, Velocity};
 
@@ -33,36 +30,39 @@ impl Component<ReceiversRemoteAlgoMode> for Motors {
         set_motors(Default::default());
 
         loop {
-            // Make sure to always receive from both channels, to prevent the buffers getting full.
-            let remote_cmd = timeout(CMD_TIMEOUT, rx_remote.recv()).await;
-            let algo_cmd = rx_algo.try_recv();
+            let new_vel = |velocity: &Velocity| {
+                println!(
+                    "[motors] Vx = {}, Vy = {}, Vtheta = {}",
+                    velocity.x, velocity.y, velocity.theta
+                );
 
-            let velocity = match (remote_cmd, algo_cmd) {
-                (Ok(None), _) => {
-                    println!("[motors] Remote's channel was closed, ending...");
-                    return Ok(());
+                velocity.into()
+            };
+            let (cmd, is_manual) = if let ControlMode::Manual(velocity) = rx_remote.borrow().deref()
+            {
+                (new_vel(velocity), true)
+            } else {
+                match timeout(CMD_TIMEOUT, rx_algo.changed()).await {
+                    Err(_elapsed) => continue,
+                    Ok(Err(_recv_err)) => {
+                        println!("[motors] Algo's channel was closed, ending...");
+                        return Ok(());
+                    }
+                    Ok(Ok(())) => (new_vel(rx_algo.borrow().deref()), false),
                 }
-                (_, Err(TryRecvError::Disconnected)) => {
-                    println!("[motors] Algo's channel was closed, ending...");
-                    return Ok(());
-                }
-                // We must at least receive the remote's command, since it indicates whether we should accept the algo's.
-                (Err(_), _) | (Ok(Some(ControlMode::Automatic)), Err(TryRecvError::Empty)) => {
-                    println!("[motors] Command reception timed out, stopping motors");
-                    // TODO
-                    continue;
-                }
-                // All's safe! Now we can pick one of the two.
-                (Ok(Some(ControlMode::Manual(cmd))), _) => cmd, // A manual command overrides the algorithm.
-                (Ok(Some(ControlMode::Automatic)), Ok(cmd)) => cmd,
             };
 
-            println!(
-                "[motors] Vx = {}, Vy = {}, Vtheta = {}",
-                velocity.x, velocity.y, velocity.theta
-            );
+            set_motors(cmd);
 
-            set_motors(MotorCommands::from(&velocity));
+            // If under manual control, we haven't `await`ed at the beginning of the loop,
+            // therefore do so now to allow other tasks to run.
+            // The motors' command won't change until the remote control does, anyway.
+            if is_manual {
+                let Ok(()) = rx_remote.changed().await else {
+                    println!("[motors] Remote's channel was closed, ending...");
+                    return Ok(());
+                };
+            }
         }
     }
 }

@@ -1,6 +1,8 @@
+use std::ops::Deref;
+
 use eyre::Context;
 use rust_sbire::Component;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::watch::{Receiver, Sender};
 
 use crate::{norm2d, Position, Velocity};
 
@@ -19,12 +21,12 @@ impl Component<SenderReceiver> for MovementAlgo {
         let mut target_y_lin_vel = 0.;
         let mut target_z_lin_vel = 0.; // TODO: I'm pretty sure this name is wrong.
         loop {
-            let Some(recv) = rx.recv().await else {
+            let Ok(()) = rx.changed().await else {
                 println!("[movement] Hall algo channel closed, ending...");
                 return Ok(());
             };
 
-            if let Some(Position { x, y, theta }) = recv {
+            if let &Some(Position { x, y, theta }) = rx.borrow().deref() {
                 let angular_diff = find_angular_diff(theta);
                 target_x_lin_vel = x / (1. + 3. * angular_diff.abs());
                 target_y_lin_vel = y / (1. + 3. * angular_diff.abs());
@@ -37,13 +39,13 @@ impl Component<SenderReceiver> for MovementAlgo {
             check_linear_limit_vel(&mut target_x_lin_vel, &mut target_y_lin_vel);
 
             // On met tout ca dans le channel
-            tx.send(Velocity {
+            let data = Velocity {
                 x: target_x_lin_vel,
                 y: target_y_lin_vel,
                 theta: target_z_lin_vel,
-            })
-            .await
-            .wrap_err("Failure to send movement algo")?;
+            };
+            println!("[movt algo] {data:?}");
+            tx.send(data).wrap_err("Failure to send movement algo")?;
         }
     }
 }

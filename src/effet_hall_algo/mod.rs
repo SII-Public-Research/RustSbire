@@ -1,6 +1,8 @@
+use std::{borrow::Borrow, ops::Deref};
+
 use eyre::Context;
 use rust_sbire::Component;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::watch::{Receiver, Sender};
 
 use crate::{BFieldData, Position};
 
@@ -25,15 +27,17 @@ impl Component<SenderReceiver> for EffetHallAlgo {
         println!("We are executing code inside the main function of the EffetHallAlgo");
 
         loop {
-            let Some(field_data) = rx.recv().await else {
+            let Ok(()) = rx.changed().await else {
                 println!("[algo] Hall's channel was closed, ending...");
                 return Ok(());
             };
-            let xy = crate::norm2d(field_data.x, field_data.y);
+
+            let &BFieldData { x, y, z } = rx.borrow().deref();
+            let xy = crate::norm2d(x, y);
             let velocity = if xy > SEUIL_3DHALL {
-                let theta = field_data.y.atan2(field_data.x);
-                let r = if field_data.z < 0. {
-                    match COEFF_C * (xy / (COEFF_K * -field_data.z)).atan() {
+                let theta = y.atan2(x);
+                let r = if z < 0. {
+                    match COEFF_C * (xy / (COEFF_K * -z)).atan() {
                         r if r < MIN_R => 0.,
                         r => r,
                     }
@@ -51,9 +55,9 @@ impl Component<SenderReceiver> for EffetHallAlgo {
                 None
             };
 
-            // On met tout ca dans le channel
+            // On met tout ca dans le channel.
+            println!("[algo] {velocity:?}");
             tx.send(velocity)
-                .await
                 .wrap_err("Failure to send movement algo")?;
         }
     }

@@ -1,8 +1,8 @@
 #![feature(async_fn_in_trait)]
 
-/// Composant par défaut, A est le type de variable passée à la tâche (peut être un tuple, notamment).
-pub trait Component<A> {
+/// `Arg` is the type passed to the task; to pass multiple arguments, use a tuple.
+pub trait Component<Arg> {
     type Error;
 
-    async fn run(arg: A) -> Result<(), Self::Error>;
+    async fn run(arg: Arg) -> Result<(), Self::Error>;
 }

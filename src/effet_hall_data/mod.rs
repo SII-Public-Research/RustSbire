@@ -1,21 +1,17 @@
-use std::{ops::Sub, path::Path, time::Duration};
+use std::{ops::Sub, path::Path};
 
 use eyre::{eyre, Context};
 use linux_embedded_hal::{i2cdev::linux::LinuxI2CError, Delay, I2cdev};
-use rust_sbire::Component;
 use tlv493d_a1b6::{Bfield, Mode, Tlv493d, ADDRESS_BASE_1};
-use tokio::{sync::mpsc::Sender, time::sleep};
+use tokio::sync::watch::Sender;
 
 use crate::BFieldData;
 
 pub struct EffetHallData;
 
 type EffetHallParams = (Sender<BFieldData>, Delay);
-impl Component<EffetHallParams> for EffetHallData {
-    type Error = eyre::Report;
-
-    // TODO: actually blocking the thread is not great, can it be replaced with an `await`?
-    async fn run((tx, mut delay): EffetHallParams) -> eyre::Result<()> {
+impl EffetHallData {
+    fn run((tx, mut delay): EffetHallParams) -> eyre::Result<()> {
         const SENSOR_I2C_ADDR: u8 = ADDRESS_BASE_1;
 
         let mut sensor = Sensor::new("/dev/i2c-1", SENSOR_I2C_ADDR)
@@ -25,17 +21,16 @@ impl Component<EffetHallParams> for EffetHallData {
             .wrap_err("Failed to read sensor resting value")?;
 
         loop {
-            sleep(Duration::from_millis(10)).await; // TODO: adjust this, or remove it entirely
+            // sleep(Duration::from_millis(10)).await; // TODO: adjust this, or remove it entirely
 
             let data = sensor
                 .get_mean(150, &mut delay)
                 .wrap_err("Failed to read sensor")?
                 - resting_value;
 
+            println!("[hall data] {data:?}");
             // On met tout ca dans le channel
-            tx.send(data)
-                .await
-                .wrap_err("Failure to send Hall effect data")?;
+            tx.send(data).wrap_err("Failure to send Hall effect data")?;
         }
     }
 }

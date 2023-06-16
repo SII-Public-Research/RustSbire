@@ -7,7 +7,7 @@ use linux_embedded_hal::{
 };
 use pscontroller_rs::{Device, PlayStationPort};
 use rust_sbire::Component;
-use tokio::{sync::mpsc::Sender, time::sleep};
+use tokio::{sync::watch::Sender, time::sleep};
 
 use crate::{ControlMode, Velocity};
 
@@ -20,7 +20,7 @@ impl Component<Sender<ControlMode>> for RemoteControl {
     type Error = eyre::Report;
 
     async fn run(tx_remote: Sender<ControlMode>) -> eyre::Result<()> {
-        const POLL_INTERVAL: Duration = Duration::from_millis(20);
+        const POLL_INTERVAL: Duration = Duration::from_millis(100);
 
         // Initial data.
         let mut x = 0.;
@@ -45,8 +45,12 @@ impl Component<Sender<ControlMode>> for RemoteControl {
             .enable_pressure()
             .wrap_err("Failed to enable DualShock2 mode")?;
 
+        println!("[remote] Controller interface configured!");
+
         loop {
+            println!("[remote] zzz...");
             sleep(POLL_INTERVAL).await;
+            println!("[remote] Gneh ?");
 
             let device = match ps_port.read_input(None) {
                 Err(err) => {
@@ -90,7 +94,7 @@ impl Component<Sender<ControlMode>> for RemoteControl {
                 }
                 device => {
                     println!(
-                        "Unsupported controller type \"{}\", manual control disabled",
+                        "[remote] Unsupported controller type \"{}\", manual control disabled",
                         controller_name(&device),
                     );
                     controlled_by_remote = false;
@@ -98,14 +102,27 @@ impl Component<Sender<ControlMode>> for RemoteControl {
             }
 
             // On met tout ca dans le channel
-            tx_remote
-                .send(if controlled_by_remote {
-                    ControlMode::Manual(Velocity { x, y, theta })
+            let command = if controlled_by_remote {
+                ControlMode::Manual(Velocity { x, y, theta })
+            } else {
+                ControlMode::Automatic
+            };
+
+            if tx_remote.send_if_modified(|prev| {
+                if command == *prev {
+                    false
                 } else {
-                    ControlMode::Automatic
-                })
-                .await
-                .wrap_err("Failure to send velocity")?;
+                    *prev = command;
+                    true
+                }
+            }) {
+                println!("[remote] New command: {command:?}");
+            }
+
+            if tx_remote.receiver_count() == 0 {
+                println!("[remote] Output channel was closed, ending...");
+                return Ok(());
+            }
         }
     }
 }

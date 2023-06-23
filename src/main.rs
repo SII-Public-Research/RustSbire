@@ -30,14 +30,15 @@
 
 #![feature(async_fn_in_trait)]
 
+use eyre::WrapErr;
 use tokio::{
     sync::{mpsc, watch},
-    try_join,
+    task, try_join,
 };
 
 use {
-    effet_hall_algo::EffetHallAlgo, motors::Motors, movement_algo::MovementAlgo,
-    remote_control::RemoteControl, rust_sbire::Component,
+    effet_hall_algo::EffetHallAlgo, effet_hall_data::EffetHallData, motors::Motors,
+    movement_algo::MovementAlgo, remote_control::RemoteControl, rust_sbire::Component,
 };
 
 pub mod effet_hall_algo;
@@ -98,17 +99,17 @@ async fn main() -> eyre::Result<()> {
     let (position_tx, position_rx) = watch::channel(Default::default());
     let (algo_cmd_vel_tx, algo_cmd_vel_rx) = watch::channel(Default::default());
 
-    //let data_hall_task =
-    //    task::spawn_blocking(move || EffetHallData::run((hall_data_tx, linux_embedded_hal::Delay)))//;
+    let data_hall_task =
+        task::spawn_blocking(move || EffetHallData::run((hall_data_tx, linux_embedded_hal::Delay)));
 
     try_join!(
         RemoteControl::run(remote_cmd_tx),
-        //async {
-        //    data_hall_task
-        //        .await
-        //        .wrap_err("Error joining data_hall task")
-        //        .and_then(|result| result)
-        //},
+        async {
+            data_hall_task
+                .await
+                .wrap_err("Error joining data_hall task")
+                .and_then(|result| result)
+        },
         EffetHallAlgo::run((position_tx, hall_data_rx)),
         MovementAlgo::run((algo_cmd_vel_tx, position_rx)),
         Motors::run((remote_cmd_rx, algo_cmd_vel_rx)),

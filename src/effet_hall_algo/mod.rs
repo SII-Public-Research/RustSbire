@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, ops::Deref};
+use std::ops::Deref;
 
 use eyre::Context;
 use rust_sbire::Component;

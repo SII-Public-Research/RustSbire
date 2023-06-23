@@ -11,7 +11,7 @@ pub struct EffetHallData;
 
 type EffetHallParams = (Sender<BFieldData>, Delay);
 impl EffetHallData {
-    fn run((tx, mut delay): EffetHallParams) -> eyre::Result<()> {
+    pub fn run((tx, mut delay): EffetHallParams) -> eyre::Result<()> {
         const SENSOR_I2C_ADDR: u8 = ADDRESS_BASE_1;
 
         let mut sensor = Sensor::new("/dev/i2c-1", SENSOR_I2C_ADDR)

@@ -20,6 +20,8 @@ impl EffetHallData {
             .get_mean(600, &mut delay)
             .wrap_err("Failed to read sensor resting value")?;
 
+        println!("[hall data] Successfully calibrated!");
+
         loop {
             // sleep(Duration::from_millis(10)).await; // TODO: adjust this, or remove it entirely
 

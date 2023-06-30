@@ -104,20 +104,14 @@ async fn main() -> eyre::Result<()> {
 
     try_join!(
         RemoteControl::run(remote_cmd_tx),
-        async {
-            data_hall_task
-                .await
-                .wrap_err("Error joining data_hall task")
-                .and_then(|result| result)
-        },
         EffetHallAlgo::run((position_tx, hall_data_rx)),
         MovementAlgo::run((algo_cmd_vel_tx, position_rx)),
         Motors::run((remote_cmd_rx, algo_cmd_vel_rx)),
     )?;
-    //data_hall_task
-    //    .await
-    //    .wrap_err("Error joining data_hall task")?
-    //    .wrap_err("Error in data_hall task")?;
+    data_hall_task
+        .await
+        .wrap_err("Error joining data_hall task")?
+        .wrap_err("Error in data_hall task")?;
     Ok(())
 }
 

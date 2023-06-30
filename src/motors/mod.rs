@@ -38,12 +38,18 @@ impl Component<ReceiversRemoteAlgoMode> for Motors {
 
                 velocity.into()
             };
-            let (cmd, is_manual) = if let ControlMode::Manual(velocity) = rx_remote.borrow().deref()
-            {
-                (new_vel(velocity), true)
+            let remote_command = rx_remote.borrow();
+            let (cmd, is_manual) = if let ControlMode::Manual(velocity) = &remote_command.deref() {
+                let motors_command = new_vel(velocity);
+                drop(remote_command);
+                (motors_command, true)
             } else {
+                drop(remote_command); // Ensure the `Ref` is not alive across `.await`, to avoid deadlocking.
                 match timeout(CMD_TIMEOUT, rx_algo.changed()).await {
-                    Err(_elapsed) => continue,
+                    Err(_elapsed) => {
+                        println!("[motors] Reception from algo task timed out");
+                        continue;
+                    }
                     Ok(Err(_recv_err)) => {
                         println!("[motors] Algo's channel was closed, ending...");
                         return Ok(());
